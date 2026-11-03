@@ -1,13 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs , useRouter} from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, CreditCard, ArrowLeftRight, BarChart3, User } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 
-function CustomTabBar({ state, descriptors, navigation }) {
+function CustomTabBar({ state, descriptors }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View
@@ -24,15 +25,9 @@ function CustomTabBar({ state, descriptors, navigation }) {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
+                const onPress = () => {
+          if (!isFocused) {
+            router.navigate(route.name === 'index' ? '/(tabs)' : `/(tabs)/${route.name}`);
           }
         };
 

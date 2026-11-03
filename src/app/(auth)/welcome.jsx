@@ -1,16 +1,38 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Shield, Sparkles, ArrowRight, Zap } from 'lucide-react-native';
+import { Sparkles, ArrowRight, Zap, Send } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
+const HERO_IMAGE = require('../assets/images/image.png');
+
+// Offsets (as % of hero height / px from right edge) so flags float in a scattered layout
+const FLAGS = [
+  { code: 'US', label: 'USA', emoji: '🇺🇸', top: '24%', right: 22, size: 38 },
+  { code: 'GB', label: 'UK', emoji: '🇬🇧', top: '42%', right: 88, size: 44 },
+  { code: 'CA', label: 'Canada', emoji: '🇨🇦', top: '60%', right: 18, size: 40 },
+];
+
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { colors, typography } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const { colors } = useTheme();
   const { loginAsDemo, isLoading } = useAuth();
+
+  const heroHeight = Math.round(height * 0.6);
 
   const handleDemoLogin = async () => {
     const res = await loginAsDemo();
@@ -20,96 +42,203 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
-          <Sparkles size={14} color={colors.primary} />
-          <Text style={[styles.badgeText, { color: colors.primary }]}>Simulation Fintech</Text>
-        </View>
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style="light" />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        contentInsetAdjustmentBehavior="never"
+      >
+        {/* Full-bleed hero: covers full width and runs under the status bar */}
+        <View style={[styles.hero, { width, height: heroHeight }]}>
+          <Image
+            source={HERO_IMAGE}
+            style={{ position: 'absolute', top: 0, left: 0, width, height: heroHeight }}
+            resizeMode="cover"
+          />
 
-      <View style={styles.heroSection}>
-        <LinearGradient
-          colors={['#635BFF', '#8B5CF6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.logoCircle}
-        >
-          <Zap size={38} color="#FFFFFF" />
-        </LinearGradient>
-        <Text style={[styles.appName, { color: colors.text }]}>Nexus Bank</Text>
-        <Text style={[styles.tagline, { color: colors.textSecondary }]}>
-          Next-generation simulated global banking, multi-currency accounts, and seamless transfers.
-        </Text>
-      </View>
+          {/* Dark fade at the top so the header stays readable */}
+          <LinearGradient
+            colors={['rgba(10, 8, 30, 0.65)', 'transparent']}
+            style={[styles.topFade, { height: insets.top + 90 }]}
+          />
+          {/* Dark fade at the bottom for the chip */}
+          <LinearGradient
+            colors={['transparent', 'rgba(10, 8, 30, 0.7)']}
+            style={styles.bottomFade}
+          />
 
-      <View style={styles.features}>
-        <View style={styles.featureItem}>
-          <View style={[styles.featureIconBox, { backgroundColor: colors.cardSecondary }]}>
-            <Shield size={18} color={colors.primary} />
+          {/* Header on top of the image */}
+          <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+            <View style={styles.brandRow}>
+              <LinearGradient
+                colors={['#635BFF', '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.logoMark}
+              >
+                <Zap size={18} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.brandName}>Revolut Bank</Text>
+            </View>
+            <View style={styles.badge}>
+              <Sparkles size={12} color="#FFFFFF" />
+              <Text style={styles.badgeText}>Simulation</Text>
+            </View>
           </View>
-          <View style={styles.featureTextCol}>
-            <Text style={[styles.featureTitle, { color: colors.text }]}>Safe Simulation Mode</Text>
-            <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>
-              Explore virtual debit cards, foreign exchange & savings pockets with fictional funds.
+
+          {/* Flags floating on top of the image, scattered on the right */}
+          {FLAGS.map((flag) => (
+            <View
+              key={flag.code}
+              style={[styles.flagItem, { top: flag.top, right: flag.right }]}
+            >
+              <View
+                style={[
+                  styles.flagCircle,
+                  {
+                    width: flag.size + 28,
+                    height: flag.size + 28,
+                    borderRadius: (flag.size + 28) / 2,
+                  },
+                ]}
+              >
+                <Text style={[styles.flagEmoji, { fontSize: flag.size }]}>{flag.emoji}</Text>
+              </View>
+              <Text style={styles.flagLabel}>{flag.label}</Text>
+            </View>
+          ))}
+
+          {/* Chip on top of the image, bottom left */}
+          <View style={styles.photoChip}>
+            <View style={styles.photoChipIcon}>
+              <Send size={16} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.photoChipTitle}>Money sent</Text>
+              <Text style={styles.photoChipSub}>Arrived in seconds</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Content */}
+        <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={styles.textSection}>
+            <Text style={[styles.headline, { color: colors.text }]}>
+              Banking without borders
+            </Text>
+            <Text style={[styles.tagline, { color: colors.textSecondary }]}>
+              Multi-currency accounts and seamless transfers across the USA, UK and Canada.
             </Text>
           </View>
+
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[styles.demoButton, { backgroundColor: colors.primary }]}
+              onPress={handleDemoLogin}
+              activeOpacity={0.85}
+              disabled={isLoading}
+            >
+              <Sparkles size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.demoButtonText}>Continue with Demo Account</Text>
+            </TouchableOpacity>
+
+            <View style={styles.subActionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.secondaryButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => router.push('/(auth)/login')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Log in</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryButton,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => router.push('/(auth)/register')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Sign up</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.onboardingLink}
+              onPress={() => router.push('/(auth)/onboarding')}
+            >
+              <Text style={[styles.onboardingLinkText, { color: colors.textSecondary }]}>
+                Take a 3-step feature tour
+              </Text>
+              <ArrowRight size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.demoButton, { backgroundColor: colors.primary }]}
-          onPress={handleDemoLogin}
-          activeOpacity={0.85}
-          disabled={isLoading}
-        >
-          <Sparkles size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.demoButtonText}>Continue with Demo Account</Text>
-        </TouchableOpacity>
-
-        <View style={styles.subActionsRow}>
-          <TouchableOpacity
-            style={[styles.secondaryButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => router.push('/(auth)/login')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Log in</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.secondaryButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => router.push('/(auth)/register')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Sign up</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={styles.onboardingLink}
-          onPress={() => router.push('/(auth)/onboarding')}
-        >
-          <Text style={[styles.onboardingLinkText, { color: colors.textSecondary }]}>
-            Take a 3-step feature tour
-          </Text>
-          <ArrowRight size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'space-between',
-    paddingBottom: 20,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
+
+  // Hero
+  hero: {
+    overflow: 'hidden',
+    backgroundColor: '#1B1840',
+  },
+  topFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '40%',
+  },
+
+  // Header (over image)
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  logoMark: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandName: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   badge: {
     flexDirection: 'row',
@@ -117,72 +246,110 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    gap: 6,
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   badgeText: {
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.2,
   },
-  heroSection: {
+
+  // Flags (over image) - no background, scattered positions
+  flagItem: {
+    position: 'absolute',
     alignItems: 'center',
-    paddingVertical: 20,
+    gap: 2,
   },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  // Semi-transparent "glass" background behind each flag
+  flagCircle: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#635BFF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.45)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
-  appName: {
-    fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: -0.6,
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 15,
+  flagEmoji: {
     textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 16,
   },
-  features: {
-    paddingVertical: 10,
+  flagLabel: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  featureItem: {
+
+  // Chip (over image)
+  photoChip: {
+    position: 'absolute',
+    left: 16,
+    bottom: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  featureIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  photoChipIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#635BFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  featureTextCol: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  featureDesc: {
+  photoChipTitle: {
+    color: '#FFFFFF',
     fontSize: 13,
-    lineHeight: 18,
+    fontWeight: '700',
   },
+  photoChipSub: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11,
+    marginTop: 1,
+  },
+
+  // Content
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 22,
+    justifyContent: 'space-between',
+    gap: 20,
+  },
+  textSection: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  headline: {
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    textAlign: 'center',
+  },
+  tagline: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+    paddingHorizontal: 8,
+  },
+
+  // Actions
   actions: {
     gap: 12,
-    paddingTop: 10,
   },
   demoButton: {
     flexDirection: 'row',
