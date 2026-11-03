@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Globe, CreditCard, PiggyBank, ArrowRight, Check } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-
-const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {

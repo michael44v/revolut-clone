@@ -4,7 +4,7 @@ import { Bell, Sparkles } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
-export default function HomeHeader({ onNotificationPress, onProfilePress }) {
+export default function HomeHeader({ onNotificationPress, onProfilePress, unreadNotificationsCount = 0 }) {
   const { colors } = useTheme();
   const { user, isDemoUser } = useAuth();
 
@@ -54,7 +54,9 @@ export default function HomeHeader({ onNotificationPress, onProfilePress }) {
         activeOpacity={0.7}
       >
         <Bell size={20} color={colors.text} />
-        <View style={[styles.notificationDot, { backgroundColor: colors.primary }]} />
+        {unreadNotificationsCount > 0 ? (
+          <View style={[styles.notificationDot, { backgroundColor: colors.primary }]} />
+        ) : null}
       </TouchableOpacity>
     </View>
   );

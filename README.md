@@ -1,57 +1,121 @@
-# Welcome to your Expo app 👋
+# Revolut-Inspired FinTech Application (Phase 1 Frontend)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A high-performance, mobile-first fintech simulation application inspired by Revolut's visual design. Built with **React Native**, **Expo SDK 58**, and **Expo Router** using **pure JavaScript and JSX** exclusively (no TypeScript or TSX).
 
-## Get started
+---
 
-1. Install dependencies
+## 🌟 Features Implemented in Phase 1
 
-   ```bash
-   npm install
-   ```
+### 1. Onboarding & Authentication
+- **Welcome Screen:** Full-bleed hero banner, simulated currency badges, and one-tap demo account login.
+- **Interactive Onboarding:** 3-step feature tour showcasing multi-currency freedom, virtual cards, and smart savings pockets.
+- **Dual Authentication Modes:**
+  - **Demo Account:** Instant access with predefined balances ($5,250 USD, £1,850 GBP, €2,400 EUR, ₦3,500,000 NGN).
+  - **New User Registration:** Dynamic user creation with starter balances ($100 USD, £50 GBP, €50 EUR, ₦50,000 NGN) and complete data isolation.
+- **Biometric / Face ID Support:** Cross-platform biometric hardware detection and toggle using `expo-local-authentication`.
+- **Session Persistence:** Cross-platform secure session management using `expo-secure-store` on native Android/iOS and `localStorage` on web.
 
-2. Start the app
+### 2. Multi-Currency Wallets & Home Dashboard
+- **Live Balances:** Real-time synchronized wallets for USD, GBP, EUR, and NGN with deterministic exchange rates.
+- **Privacy Mode:** One-tap balance visibility toggle (`••••••••`).
+- **Quick Action Sheet:**
+  - **Add Money:** Deposits simulated funds into selected wallets and updates ledger transactions.
+  - **Send Money:** Deducts funds and creates a verified transfer record.
+  - **Request Payment:** Creates incoming pending transaction records without premature ledger credits.
+  - **Exchange Currency:** Converts funds between any currency pair at live exchange rates and updates both balances simultaneously.
+- **Notifications Bottom Sheet:**
+  - Unread badge indicator.
+  - Realistic banking, security, and transaction notifications.
+  - Functional "Mark all as read" button.
 
-   ```bash
-   npx expo start
-   ```
+### 3. Auxiliary Financial Screens
+- **Virtual Cards:**
+  - Visa and disposable Mastercard graphics with dynamic gradients.
+  - Unmask card numbers and CVV codes.
+  - Freeze and unfreeze cards instantly with live status notifications.
+  - Monthly limit tracking bar.
+- **Transfers & Payments:**
+  - Contact shortcuts and live search bar.
+  - Category filters: All, Income, Transfers, Shopping, Exchange.
+  - Transaction receipts with double-entry settlement notes.
+- **Analytics & Insights:**
+  - Total inflow vs. outflow summary.
+  - Weekly activity histogram.
+  - Multi-currency portfolio allocation breakdown.
+  - Target-tracking savings pockets.
+- **Profile & Settings:**
+  - Personal profile and tier badge.
+  - Light / Dark / System theme preference switcher with centralized design tokens.
+  - Face ID / Biometrics toggle.
+  - Push notification preferences.
+  - Secure logout clearing active session.
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🏗️ Architecture & Procedural PHP Backend Migration
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+The frontend service layer in `src/services/` is strictly decoupled from UI components. All services return the standardized JSON envelope:
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```json
+{
+  "success": true,
+  "message": "Operation description",
+  "data": { ... }
+}
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Future PHP Integration Guide
+When transitioning from the Phase 1 simulated financial store to the Phase 2 procedural PHP backend:
+1. Set the environment variable `EXPO_PUBLIC_API_URL` to your PHP backend endpoint (e.g. `https://api.yourfintech.com/api/v1`).
+2. Update `src/services/api.js` to dispatch fetch requests to the PHP endpoints:
+   - `/auth/login.php`
+   - `/auth/register.php`
+   - `/wallets/list.php`
+   - `/transactions/create_transfer.php`
+   - `/cards/toggle_freeze.php`
+3. Backend database requirements: Plain procedural PHP with MySQLi prepared statements exclusively, avoiding MVC, ORMs, PDO, or frameworks.
 
-### Other setup steps
+---
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## 🚀 Running the Project
 
-## Learn more
+### Prerequisites
+- Node.js 18+ (tested on Node v22)
+- npm or bun
 
-To learn more about developing your project with Expo, look at the following resources:
+### Setup & Launch
+```bash
+# Install dependencies
+npm install
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+# Start Expo development server
+npx expo start
 
-## Join the community
+# Run on web
+npx expo start --web
 
-Join our community of developers creating universal apps.
+# Run on Android
+npx expo start --android
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-# revolut-clone
+# Run on iOS
+npx expo start --ios
+```
+
+### Verification & Linting
+```bash
+# Run ESLint checks
+npm run lint
+
+# Run Expo Doctor dependency diagnostics
+npx expo-doctor
+
+# Run Automated Playwright Verification
+python3 scripts/verify_e2e.py
+```
+
+---
+
+## 🔑 Demo Credentials
+- **Email:** `alex.rivera@example.com` (or any email containing `demo`)
+- **Password:** Any password (simulation mode)
+- **One-Tap Access:** Tap **"Continue with Demo Account"** on the Welcome screen.

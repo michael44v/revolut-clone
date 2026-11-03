@@ -12,10 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
 import { walletService } from '../../services/walletService';
 import { transactionService } from '../../services/transactionService';
-import { analyticsService, savingsService } from '../../services/dashboardService';
+import { analyticsService, notificationService } from '../../services/dashboardService';
+import { financialStore } from '../../services/financialStore';
 
 import HomeHeader from '../../components/HomeHeader';
 import BalanceCard from '../../components/BalanceCard';
@@ -24,36 +24,47 @@ import WalletCarousel from '../../components/WalletCarousel';
 import RecentTransactions from '../../components/RecentTransactions';
 import SpendingAnalyticsCard from '../../components/SpendingAnalyticsCard';
 import ActionModal from '../../components/ActionModal';
+import NotificationModal from '../../components/NotificationModal';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { user } = useAuth();
 
   const [refreshing, setRefreshing] = useState(false);
   const [wallets, setWallets] = useState([]);
-  const [totalUsd, setTotalUsd] = useState(11485.5);
+  const [totalUsd, setTotalUsd] = useState(0);
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [activeModalAction, setActiveModalAction] = useState(null);
   const [selectedTx, setSelectedTx] = useState(null);
+  const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
-      const [walletRes, txRes, analyticsRes] = await Promise.all([
+      const [walletRes, txRes, analyticsRes, notifRes] = await Promise.all([
         walletService.getWallets(),
-        transactionService.getTransactions(5),
+        transactionService.getTransactions(6),
         analyticsService.getMonthlySummary(),
+        notificationService.getNotifications(),
       ]);
 
       if (walletRes.success) {
         setWallets(walletRes.data.wallets);
         setTotalUsd(walletRes.data.totalUsdEquivalent);
-        if (!selectedWallet && walletRes.data.wallets.length > 0) {
-          setSelectedWallet(walletRes.data.wallets[0]);
-        }
+        setSelectedWallet((prev) => {
+          if (!prev && walletRes.data.wallets.length > 0) {
+            return walletRes.data.wallets[0];
+          }
+          if (prev) {
+            const updated = walletRes.data.wallets.find((w) => w.id === prev.id);
+            return updated || walletRes.data.wallets[0];
+          }
+          return null;
+        });
       }
 
       if (txRes.success) {
@@ -63,13 +74,36 @@ export default function HomeScreen() {
       if (analyticsRes.success) {
         setAnalytics(analyticsRes.data);
       }
+
+      if (notifRes.success) {
+        setNotifications(notifRes.data.notifications);
+        setUnreadCount(notifRes.data.unreadCount);
+      }
     } catch (e) {
       console.warn('Error loading dashboard data:', e);
     }
-  }, [selectedWallet]);
+  }, []);
 
   useEffect(() => {
-    loadData();
+    // Initial fetch
+    let isMounted = true;
+    (async () => {
+      if (isMounted) {
+        await loadData();
+      }
+    })();
+
+    // Subscribe to real-time financial store updates
+    const unsubscribe = financialStore.subscribe(() => {
+      if (isMounted) {
+        loadData();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [loadData]);
 
   const onRefresh = async () => {
@@ -88,24 +122,47 @@ export default function HomeScreen() {
   };
 
   const handleTransfer = async ({ recipientName, amount, currency, reference }) => {
-    await transactionService.createSimulatedTransfer({
+    const res = await transactionService.createSimulatedTransfer({
       recipientName,
       amount,
       currency,
       reference,
     });
-    // Deduct simulated balance
-    await walletService.addFunds(currency, -amount);
     await loadData();
+    return res;
+  };
+
+  const handleRequest = async ({ fromName, amount, currency, note }) => {
+    const res = await transactionService.createSimulatedRequest({
+      fromName,
+      amount,
+      currency,
+      note,
+    });
+    await loadData();
+    return res;
+  };
+
+  const handleExchange = async ({ fromCurrency, toCurrency, amount }) => {
+    const res = await walletService.convertCurrency(fromCurrency, toCurrency, amount);
+    await loadData();
+    return res;
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    const res = await notificationService.markAllAsRead();
+    if (res.success) {
+      setNotifications(res.data.notifications);
+      setUnreadCount(0);
+    }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <HomeHeader
         onProfilePress={() => router.push('/(tabs)/profile')}
-        onNotificationPress={() => {
-          Alert.alert('Notifications', 'You have no unread security or payment alerts.');
-        }}
+        onNotificationPress={() => setNotificationModalVisible(true)}
+        unreadNotificationsCount={unreadCount}
       />
 
       <ScrollView
@@ -139,7 +196,7 @@ export default function HomeScreen() {
           onAddCurrency={() => {
             Alert.alert(
               'Add Currency Wallet',
-              'Multi-currency support allows holding JPY, CAD, CHF, AUD and more in the simulation.',
+              'Multi-currency accounts support USD, GBP, EUR and NGN with immediate double-entry verification.',
               [{ text: 'Got it' }]
             );
           }}
@@ -162,6 +219,17 @@ export default function HomeScreen() {
         onClose={() => setActiveModalAction(null)}
         onAddMoney={handleAddMoney}
         onSubmitTransfer={handleTransfer}
+        onSubmitRequest={handleRequest}
+        onSubmitExchange={handleExchange}
+      />
+
+      {/* Notifications Bottom Sheet Modal */}
+      <NotificationModal
+        visible={notificationModalVisible}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onClose={() => setNotificationModalVisible(false)}
+        onMarkAllAsRead={handleMarkAllNotificationsRead}
       />
 
       {/* Transaction Details Modal */}
@@ -187,7 +255,12 @@ export default function HomeScreen() {
               <View style={[styles.detailInfoBox, { backgroundColor: colors.cardSecondary }]}>
                 <View style={styles.detailRow}>
                   <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Status</Text>
-                  <Text style={[styles.infoVal, { color: colors.success }]}>
+                  <Text
+                    style={[
+                      styles.infoVal,
+                      { color: selectedTx.status === 'completed' ? colors.success : colors.warning },
+                    ]}
+                  >
                     {selectedTx.status.toUpperCase()}
                   </Text>
                 </View>
@@ -199,6 +272,12 @@ export default function HomeScreen() {
                   <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Ledger Unit</Text>
                   <Text style={[styles.infoVal, { color: colors.text }]}>Double-entry verified</Text>
                 </View>
+                {selectedTx.fee !== undefined ? (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Transaction Fee</Text>
+                    <Text style={[styles.infoVal, { color: colors.text }]}>$0.00 (Free)</Text>
+                  </View>
+                ) : null}
               </View>
 
               <TouchableOpacity

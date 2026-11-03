@@ -10,7 +10,7 @@ export default function BalanceCard({
   activeCurrency,
   onCurrencySelectPress,
 }) {
-  const { colors, typography } = useTheme();
+  const { colors } = useTheme();
 
   const formattedAmount = isBalanceVisible
     ? `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

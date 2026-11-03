@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  User,
   Shield,
   Moon,
   Sun,
@@ -12,14 +11,49 @@ import {
   LogOut,
   ChevronRight,
   Sparkles,
+  ScanFace,
+  Bell,
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { biometricsService } from '../../utils/biometrics';
+import { storage } from '../../utils/storage';
+
+const BIOMETRICS_PREF_KEY = 'app_biometrics_enabled';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors, isDark, themeMode, setThemeMode } = useTheme();
   const { user, isDemoUser, logout } = useAuth();
+
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState('Face ID');
+  const [pushNotifsEnabled, setPushNotifsEnabled] = useState(true);
+
+  useEffect(() => {
+    async function checkBio() {
+      const bioInfo = await biometricsService.isAvailable();
+      setBiometricType(bioInfo.type);
+      const savedBio = await storage.getItem(BIOMETRICS_PREF_KEY);
+      if (savedBio !== null) {
+        setBiometricsEnabled(savedBio === 'true');
+      }
+    }
+    checkBio();
+  }, []);
+
+  const toggleBiometrics = async (val) => {
+    if (val) {
+      const auth = await biometricsService.authenticate(`Enable ${biometricType} for instant sign-in`);
+      if (auth.success) {
+        setBiometricsEnabled(true);
+        await storage.setItem(BIOMETRICS_PREF_KEY, 'true');
+      }
+    } else {
+      setBiometricsEnabled(false);
+      await storage.setItem(BIOMETRICS_PREF_KEY, 'false');
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to log out?', [
@@ -68,9 +102,49 @@ export default function ProfileScreen() {
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{displayEmail}</Text>
             <View style={[styles.planBadge, { backgroundColor: colors.chip }]}>
               <Text style={[styles.planBadgeText, { color: colors.text }]}>
-                {user?.tier || 'Metal Premium'} Plan
+                {user?.tier || (isDemoUser ? 'Metal Premium' : 'Standard')} Plan
               </Text>
             </View>
+          </View>
+        </View>
+
+        {/* Security & Biometrics Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>SECURITY & BIOMETRICS</Text>
+          <View style={[styles.sectionGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.menuItem}>
+              <View style={styles.menuLeft}>
+                <View style={[styles.iconBox, { backgroundColor: colors.cardSecondary }]}>
+                  <ScanFace size={18} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>{biometricType}</Text>
+                  <Text style={[styles.menuSub, { color: colors.textSecondary }]}>
+                    Unlock simulated account
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={biometricsEnabled}
+                onValueChange={toggleBiometrics}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#D1D5DB', true: colors.primary }}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}
+              onPress={() => Alert.alert('Security & PIN', 'Passcode protection is currently set to 4-digit simulation PIN.')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuLeft}>
+                <View style={[styles.iconBox, { backgroundColor: colors.cardSecondary }]}>
+                  <Shield size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.menuTitle, { color: colors.text }]}>Security & PIN</Text>
+              </View>
+              <ChevronRight size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -119,33 +193,34 @@ export default function ProfileScreen() {
               </View>
               <ChevronRight size={18} color={colors.textSecondary} />
             </TouchableOpacity>
+
+            <View style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}>
+              <View style={styles.menuLeft}>
+                <View style={[styles.iconBox, { backgroundColor: colors.cardSecondary }]}>
+                  <Bell size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.menuTitle, { color: colors.text }]}>Push Notifications</Text>
+              </View>
+              <Switch
+                value={pushNotifsEnabled}
+                onValueChange={setPushNotifsEnabled}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#D1D5DB', true: colors.primary }}
+              />
+            </View>
           </View>
         </View>
 
-        {/* Security & Support Section */}
+        {/* System & Support */}
         <View style={styles.section}>
-          <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>SECURITY & SYSTEM</Text>
+          <Text style={[styles.sectionHeading, { color: colors.textSecondary }]}>SYSTEM & ARCHITECTURE</Text>
           <View style={[styles.sectionGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => Alert.alert('Security', 'Simulated biometric & PIN settings are active.')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuLeft}>
-                <View style={[styles.iconBox, { backgroundColor: colors.cardSecondary }]}>
-                  <Shield size={18} color={colors.primary} />
-                </View>
-                <Text style={[styles.menuTitle, { color: colors.text }]}>Security & PIN</Text>
-              </View>
-              <ChevronRight size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: colors.borderSubtle }]}
               onPress={() =>
                 Alert.alert(
                   'About Simulation',
-                  'Revolut-inspired Fintech Simulator.\nProcedural PHP Backend Ready.\nReact Native Expo JS Only.'
+                  'Revolut-inspired Fintech Simulator.\nArchitecture: Pure React Native JSX with decoupled services.\nBackend: Procedural PHP / MySQLi ready.'
                 )
               }
               activeOpacity={0.7}
@@ -154,7 +229,7 @@ export default function ProfileScreen() {
                 <View style={[styles.iconBox, { backgroundColor: colors.cardSecondary }]}>
                   <HelpCircle size={18} color={colors.primary} />
                 </View>
-                <Text style={[styles.menuTitle, { color: colors.text }]}>Help & Simulation Info</Text>
+                <Text style={[styles.menuTitle, { color: colors.text }]}>About & PHP Architecture</Text>
               </View>
               <ChevronRight size={18} color={colors.textSecondary} />
             </TouchableOpacity>

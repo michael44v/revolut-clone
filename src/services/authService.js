@@ -1,3 +1,5 @@
+import { financialStore } from './financialStore';
+
 /**
  * Authentication service
  * Fully compatible with future procedural PHP auth endpoints:
@@ -21,7 +23,7 @@ const DEMO_USER = {
 
 export const authService = {
   async login(email, password) {
-    await new Promise((r) => setTimeout(r, 450));
+    await new Promise((r) => setTimeout(r, 300));
     if (!email || !password) {
       return {
         success: false,
@@ -30,53 +32,63 @@ export const authService = {
       };
     }
 
-    if (email.toLowerCase() === 'alex.rivera@example.com' || email.includes('demo')) {
+    if (email.toLowerCase() === 'alex.rivera@example.com' || email.toLowerCase().includes('demo')) {
+      await financialStore.init(DEMO_USER.id);
       return {
         success: true,
-        message: 'Logged in successfully',
+        message: 'Logged in successfully as Demo User',
         data: {
           user: DEMO_USER,
-          token: 'sim_jwt_token_demo_user_' + Date.now(),
+          token: `sim_jwt_token_demo_${Date.now()}`,
         },
       };
     }
 
+    const userId = `usr_${Math.abs(
+      email
+        .split('')
+        .reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
+    ).toString(16)}`;
+
     const standardUser = {
-      id: 'usr_' + Math.floor(Math.random() * 89999 + 10000),
+      id: userId,
       name: email.split('@')[0],
       email: email.toLowerCase(),
       avatar: null,
-      tag: '@' + email.split('@')[0],
+      tag: `@${email.split('@')[0]}`,
       kycStatus: 'verified',
       tier: 'Standard',
       isDemo: false,
       createdAt: new Date().toISOString(),
     };
 
+    await financialStore.init(userId);
+
     return {
       success: true,
       message: 'Logged in successfully',
       data: {
         user: standardUser,
-        token: 'sim_jwt_token_user_' + Date.now(),
+        token: `sim_jwt_token_user_${Date.now()}`,
       },
     };
   },
 
   async loginAsDemo() {
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 200));
+    await financialStore.init(DEMO_USER.id);
     return {
       success: true,
       message: 'Logged in as Demo User',
       data: {
         user: DEMO_USER,
-        token: 'sim_jwt_token_demo_' + Date.now(),
+        token: `sim_jwt_token_demo_${Date.now()}`,
       },
     };
   },
 
   async register(name, email, password) {
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 350));
     if (!name || !email || !password) {
       return {
         success: false,
@@ -85,30 +97,38 @@ export const authService = {
       };
     }
 
+    const userId = `usr_${Math.abs(
+      email
+        .split('')
+        .reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
+    ).toString(16)}`;
+
     const newUser = {
-      id: 'usr_' + Math.floor(Math.random() * 89999 + 10000),
+      id: userId,
       name,
       email: email.toLowerCase(),
       avatar: null,
-      tag: '@' + name.toLowerCase().replace(/\s+/g, ''),
-      kycStatus: 'pending',
+      tag: `@${name.toLowerCase().replace(/\s+/g, '')}`,
+      kycStatus: 'verified',
       tier: 'Standard',
       isDemo: false,
       createdAt: new Date().toISOString(),
     };
+
+    await financialStore.init(userId);
 
     return {
       success: true,
       message: 'Account created successfully',
       data: {
         user: newUser,
-        token: 'sim_jwt_token_user_' + Date.now(),
+        token: `sim_jwt_token_user_${Date.now()}`,
       },
     };
   },
 
   async logout() {
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 100));
     return {
       success: true,
       message: 'Logged out successfully',
