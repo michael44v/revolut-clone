@@ -14,14 +14,14 @@ export const storage = {
         if (typeof window !== 'undefined' && window.localStorage) {
           return window.localStorage.getItem(key);
         }
-      } catch (e) {
+      } catch (_e) {
         return null;
       }
       return null;
     }
     try {
       return await SecureStore.getItemAsync(key);
-    } catch (e) {
+    } catch (_e) {
       return null;
     }
   },
@@ -32,14 +32,14 @@ export const storage = {
         if (typeof window !== 'undefined' && window.localStorage) {
           window.localStorage.setItem(key, value);
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore storage errors
       }
       return;
     }
     try {
       await SecureStore.setItemAsync(key, value);
-    } catch (e) {
+    } catch (_e) {
       // Ignore
     }
   },
@@ -50,14 +50,14 @@ export const storage = {
         if (typeof window !== 'undefined' && window.localStorage) {
           window.localStorage.removeItem(key);
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore
       }
       return;
     }
     try {
       await SecureStore.deleteItemAsync(key);
-    } catch (e) {
+    } catch (_e) {
       // Ignore
     }
   },

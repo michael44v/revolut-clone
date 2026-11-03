@@ -28,7 +28,7 @@ export const ThemeProvider = ({ children }) => {
         if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
           setThemeModeState(saved);
         }
-      } catch (e) {
+      } catch (_e) {
         // Fallback gracefully
       } finally {
         setIsLoaded(true);
@@ -41,7 +41,7 @@ export const ThemeProvider = ({ children }) => {
     setThemeModeState(mode);
     try {
       await storage.setItem(THEME_STORAGE_KEY, mode);
-    } catch (e) {
+    } catch (_e) {
       // Ignore
     }
   };

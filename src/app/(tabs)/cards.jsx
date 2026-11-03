@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lock, Unlock, Plus, ShieldCheck, Eye, EyeOff, Globe } from 'lucide-react-native';
+import { Lock, Unlock, Plus, ShieldCheck, Eye, EyeOff, Globe, CreditCard } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { cardService } from '../../services/dashboardService';
+import { financialStore } from '../../services/financialStore';
 
 export default function CardsScreen() {
   const { colors } = useTheme();
@@ -12,17 +13,34 @@ export default function CardsScreen() {
   const [showNumbers, setShowNumbers] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     async function load() {
       const res = await cardService.getCards();
-      if (res.success) setCards(res.data);
+      if (res.success && isMounted) {
+        setCards(res.data);
+      }
     }
     load();
+
+    const unsubscribe = financialStore.subscribe(() => {
+      if (isMounted) {
+        load();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
-  const toggleFreeze = (cardId) => {
-    setCards((prev) =>
-      prev.map((c) => (c.id === cardId ? { ...c, isFrozen: !c.isFrozen } : c))
-    );
+  const toggleFreeze = async (cardId) => {
+    const res = await cardService.toggleFreeze(cardId);
+    if (res.success) {
+      setCards((prev) =>
+        prev.map((c) => (c.id === cardId ? { ...c, isFrozen: !c.isFrozen } : c))
+      );
+    }
   };
 
   return (
@@ -31,7 +49,8 @@ export default function CardsScreen() {
         <Text style={[styles.title, { color: colors.text }]}>Virtual Cards</Text>
         <TouchableOpacity
           style={[styles.newCardBtn, { backgroundColor: colors.primaryLight }]}
-          onPress={() => Alert.alert('New Card', 'Instant disposable virtual card created.')}
+          onPress={() => Alert.alert('New Card', 'Instant disposable virtual card generated and activated.')}
+          activeOpacity={0.8}
         >
           <Plus size={16} color={colors.primary} />
           <Text style={[styles.newCardText, { color: colors.primary }]}>Get Card</Text>
@@ -48,12 +67,15 @@ export default function CardsScreen() {
               style={styles.cardGraphic}
             >
               <View style={styles.cardGraphicTop}>
-                <Text style={styles.cardType}>{c.type.toUpperCase()}</Text>
+                <View style={styles.typeBadge}>
+                  <CreditCard size={12} color="#FFFFFF" />
+                  <Text style={styles.cardType}>{c.type.toUpperCase()}</Text>
+                </View>
                 <Text style={styles.cardBrand}>{c.brand}</Text>
               </View>
 
               <Text style={styles.cardNumber}>
-                {showNumbers ? '4892  3819  2019  4892' : c.cardNumberMasked}
+                {showNumbers ? (c.fullCardNumber || '4892  3819  2019  4892') : c.cardNumberMasked}
               </Text>
 
               <View style={styles.cardGraphicBottom}>
@@ -61,12 +83,38 @@ export default function CardsScreen() {
                   <Text style={styles.cardHolderLabel}>CARDHOLDER</Text>
                   <Text style={styles.cardHolderName}>{c.cardholderName}</Text>
                 </View>
-                <View>
-                  <Text style={styles.cardHolderLabel}>EXPIRES</Text>
-                  <Text style={styles.cardExpiry}>{c.expiry}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.cardHolderLabel}>EXPIRES / CVV</Text>
+                  <Text style={styles.cardExpiry}>
+                    {c.expiry} • {showNumbers ? (c.cvv || '842') : '•••'}
+                  </Text>
                 </View>
               </View>
             </LinearGradient>
+
+            {/* Spend limit tracking */}
+            <View style={[styles.spendTracker, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.spendTrackerTop}>
+                <Text style={[styles.spendLabel, { color: colors.textSecondary }]}>Monthly Limit Used</Text>
+                <Text style={[styles.spendVal, { color: colors.text }]}>
+                  ${c.currentSpend?.toFixed(2) || '0.00'} / ${c.monthlyLimit?.toLocaleString() || '5,000'}
+                </Text>
+              </View>
+              <View style={styles.spendBarTrack}>
+                <View
+                  style={[
+                    styles.spendBarFill,
+                    {
+                      width: `${Math.min(
+                        Math.round(((c.currentSpend || 0) / (c.monthlyLimit || 5000)) * 100),
+                        100
+                      )}%`,
+                      backgroundColor: c.accentColor || colors.primary,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
 
             <View style={[styles.controlsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <TouchableOpacity
@@ -82,7 +130,7 @@ export default function CardsScreen() {
                   )}
                 </View>
                 <Text style={[styles.controlLabel, { color: colors.text }]}>
-                  {c.isFrozen ? 'Unfreeze' : 'Freeze Card'}
+                  {c.isFrozen ? 'Unfreeze' : 'Freeze'}
                 </Text>
               </TouchableOpacity>
 
@@ -107,8 +155,8 @@ export default function CardsScreen() {
                 style={styles.controlItem}
                 onPress={() =>
                   Alert.alert(
-                    'Online Payments',
-                    'Online simulated e-commerce transactions are currently ACTIVE.'
+                    'Online Spending Protection',
+                    'Dynamic 3D-Secure simulation is active. Disposable card numbers rotate immediately after payment completion.'
                   )
                 }
                 activeOpacity={0.7}
@@ -116,7 +164,7 @@ export default function CardsScreen() {
                 <View style={[styles.controlIcon, { backgroundColor: colors.cardSecondary }]}>
                   <Globe size={18} color={colors.primary} />
                 </View>
-                <Text style={[styles.controlLabel, { color: colors.text }]}>Online Pay</Text>
+                <Text style={[styles.controlLabel, { color: colors.text }]}>Security</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -125,7 +173,7 @@ export default function CardsScreen() {
         <View style={[styles.safetyNotice, { backgroundColor: colors.cardSecondary }]}>
           <ShieldCheck size={20} color={colors.success} />
           <Text style={[styles.safetyText, { color: colors.textSecondary }]}>
-            All card numbers and CVVs are fictional simulation data. No real card networks are accessed.
+            All card numbers and CVVs are fictional simulation data. Instant freeze immediately blocks all simulated merchant debits.
           </Text>
         </View>
       </ScrollView>
@@ -185,11 +233,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
   cardType: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
   },
   cardBrand: {
     color: '#FFFFFF',
@@ -199,7 +256,7 @@ const styles = StyleSheet.create({
   },
   cardNumber: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '600',
     letterSpacing: 2,
   },
@@ -224,6 +281,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
+  },
+  spendTracker: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  spendTrackerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  spendLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  spendVal: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  spendBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  spendBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   controlsCard: {
     flexDirection: 'row',

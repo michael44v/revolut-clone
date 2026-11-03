@@ -1,52 +1,64 @@
+import { financialStore } from './financialStore';
+
 /**
- * Secondary services: cards, savings, analytics, rates
+ * Secondary services: cards, savings, analytics, rates, notifications
  */
 
 export const cardService = {
   async getCards() {
+    await new Promise((r) => setTimeout(r, 100));
     return {
       success: true,
       message: 'Cards retrieved',
-      data: [
-        {
-          id: 'crd_01',
-          type: 'Virtual',
-          brand: 'Visa',
-          cardNumberMasked: '•••• •••• •••• 4892',
-          expiry: '09/28',
-          cvv: '•••',
-          cardholderName: 'ALEX RIVERA',
-          isFrozen: false,
-          colorGradient: ['#1F232F', '#0B0C10'],
-          accentColor: '#635BFF',
-          contactlessEnabled: true,
-          onlinePaymentsEnabled: true,
-          monthlyLimit: 5000,
-          currentSpend: 1342.5,
-        },
-        {
-          id: 'crd_02',
-          type: 'Disposable Virtual',
-          brand: 'Mastercard',
-          cardNumberMasked: '•••• •••• •••• 8310',
-          expiry: '05/26',
-          cvv: '•••',
-          cardholderName: 'ALEX RIVERA',
-          isFrozen: false,
-          colorGradient: ['#E11D48', '#881337'],
-          accentColor: '#FDA4AF',
-          contactlessEnabled: false,
-          onlinePaymentsEnabled: true,
-          monthlyLimit: 1000,
-          currentSpend: 145.2,
-        },
-      ],
+      data: financialStore.getCards(),
+    };
+  },
+
+  async toggleFreeze(cardId) {
+    await new Promise((r) => setTimeout(r, 150));
+    const card = await financialStore.toggleCardFreeze(cardId);
+    if (!card) {
+      return { success: false, message: 'Card not found', errors: ['Card not found'] };
+    }
+    return {
+      success: true,
+      message: card.isFrozen ? 'Card frozen successfully' : 'Card unfrozen successfully',
+      data: card,
+    };
+  },
+};
+
+export const notificationService = {
+  async getNotifications() {
+    await new Promise((r) => setTimeout(r, 80));
+    const notifs = financialStore.getNotifications();
+    return {
+      success: true,
+      message: 'Notifications retrieved',
+      data: {
+        notifications: notifs,
+        unreadCount: notifs.filter((n) => !n.read).length,
+      },
+    };
+  },
+
+  async markAllAsRead() {
+    await new Promise((r) => setTimeout(r, 100));
+    const notifs = await financialStore.markAllNotificationsRead();
+    return {
+      success: true,
+      message: 'All notifications marked as read',
+      data: {
+        notifications: notifs,
+        unreadCount: 0,
+      },
     };
   },
 };
 
 export const savingsService = {
   async getPockets() {
+    await new Promise((r) => setTimeout(r, 100));
     return {
       success: true,
       message: 'Savings pockets retrieved',
@@ -78,20 +90,36 @@ export const savingsService = {
 
 export const analyticsService = {
   async getMonthlySummary() {
+    await new Promise((r) => setTimeout(r, 120));
+    const txs = financialStore.getTransactions(100);
+
+    let calculatedSpent = 0;
+    let calculatedIncome = 0;
+
+    txs.forEach((t) => {
+      if (t.status === 'completed') {
+        if (t.amount < 0) {
+          calculatedSpent += Math.abs(t.amount);
+        } else {
+          calculatedIncome += t.amount;
+        }
+      }
+    });
+
     return {
       success: true,
       message: 'Analytics summary retrieved',
       data: {
-        totalSpent: 2840.5,
-        totalIncome: 5500.0,
+        totalSpent: Math.round(calculatedSpent * 100) / 100,
+        totalIncome: Math.round(calculatedIncome * 100) / 100,
         currency: 'USD',
         symbol: '$',
         categories: [
-          { name: 'Shopping', amount: 1140, percentage: 40, color: '#635BFF' },
-          { name: 'Food & Dining', amount: 620, percentage: 22, color: '#F59E0B' },
-          { name: 'Bills & Utilities', amount: 510, percentage: 18, color: '#0EA5E9' },
-          { name: 'Entertainment', amount: 320, percentage: 11, color: '#EC4899' },
-          { name: 'Transport', amount: 250.5, percentage: 9, color: '#10B981' },
+          { name: 'Shopping', amount: 1140, percentage: 38, color: '#635BFF' },
+          { name: 'Food & Dining', amount: 620, percentage: 21, color: '#F59E0B' },
+          { name: 'Bills & Utilities', amount: 510, percentage: 17, color: '#0EA5E9' },
+          { name: 'Transfers', amount: 450, percentage: 15, color: '#10B981' },
+          { name: 'Entertainment', amount: 270, percentage: 9, color: '#EC4899' },
         ],
         weeklyTrends: [
           { day: 'Mon', amount: 45 },
@@ -111,6 +139,7 @@ export const exchangeRateService = {
   async getLiveRates() {
     return {
       success: true,
+      message: 'Live market rates retrieved',
       data: [
         { pair: 'EUR/USD', rate: 1.0824, change: '+0.15%', isUp: true },
         { pair: 'GBP/USD', rate: 1.2915, change: '+0.32%', isUp: true },

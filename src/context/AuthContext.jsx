@@ -31,6 +31,8 @@ export const AuthProvider = ({ children }) => {
           const parsedUser = JSON.parse(storedUserData);
           setUser(parsedUser);
           setIsDemoUser(Boolean(parsedUser.isDemo));
+          const { financialStore } = await import('../services/financialStore');
+          await financialStore.init(parsedUser.id);
         }
       } catch (err) {
         console.warn('Failed restoring auth session:', err);
@@ -83,7 +85,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authService.logout();
-    } catch (e) {
+    } catch (_e) {
       // Ignore
     } finally {
       setUser(null);
@@ -91,7 +93,7 @@ export const AuthProvider = ({ children }) => {
       try {
         await storage.deleteItem(AUTH_TOKEN_KEY);
         await storage.deleteItem(AUTH_USER_KEY);
-      } catch (err) {
+      } catch (_err) {
         // Ignore
       }
     }
