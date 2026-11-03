@@ -6,8 +6,8 @@ import { storage } from '../utils/storage';
  * JSON envelopes, and seamless mock fallback mode.
  */
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+export const API_BASE_URL = 'https://bluevult.com/revolut_api/backend/api/v1';
+
 
 // Toggle to force mock mode if backend is offline or during testing
 export const USE_MOCK_FALLBACK = false;
