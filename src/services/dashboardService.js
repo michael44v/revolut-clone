@@ -1,12 +1,23 @@
+import { apiRequest } from './api';
 import { financialStore } from './financialStore';
 
 /**
- * Secondary services: cards, savings, analytics, rates, notifications
+ * Secondary services: cards, notifications, analytics, rates
+ * Connects to PHP backend:
+ * GET  /api/v1/cards
+ * POST /api/v1/cards/update_status
+ * GET  /api/v1/notifications
+ * POST /api/v1/notifications/mark_all_read
+ * GET  /api/v1/analytics/dashboard
+ * GET  /api/v1/exchange/rates
  */
 
 export const cardService = {
   async getCards() {
-    await new Promise((r) => setTimeout(r, 100));
+    const res = await apiRequest('/cards');
+    if (res && res.success && res.data) {
+      return res;
+    }
     return {
       success: true,
       message: 'Cards retrieved',
@@ -15,14 +26,19 @@ export const cardService = {
   },
 
   async toggleFreeze(cardId) {
-    await new Promise((r) => setTimeout(r, 150));
-    const card = await financialStore.toggleCardFreeze(cardId);
-    if (!card) {
-      return { success: false, message: 'Card not found', errors: ['Card not found'] };
+    const res = await apiRequest('/cards/update_status', {
+      method: 'POST',
+      body: { cardId },
+    });
+    if (res && res.success && res.data) {
+      await financialStore.toggleCardFreeze(cardId);
+      return res;
     }
+
+    const card = await financialStore.toggleCardFreeze(cardId);
     return {
       success: true,
-      message: card.isFrozen ? 'Card frozen successfully' : 'Card unfrozen successfully',
+      message: card?.isFrozen ? 'Card frozen successfully' : 'Card unfrozen successfully',
       data: card,
     };
   },
@@ -30,7 +46,10 @@ export const cardService = {
 
 export const notificationService = {
   async getNotifications() {
-    await new Promise((r) => setTimeout(r, 80));
+    const res = await apiRequest('/notifications');
+    if (res && res.success && res.data) {
+      return res;
+    }
     const notifs = financialStore.getNotifications();
     return {
       success: true,
@@ -43,7 +62,12 @@ export const notificationService = {
   },
 
   async markAllAsRead() {
-    await new Promise((r) => setTimeout(r, 100));
+    const res = await apiRequest('/notifications/mark_all_read', { method: 'POST' });
+    if (res && res.success && res.data) {
+      await financialStore.markAllNotificationsRead();
+      return res;
+    }
+
     const notifs = await financialStore.markAllNotificationsRead();
     return {
       success: true,
@@ -58,7 +82,6 @@ export const notificationService = {
 
 export const savingsService = {
   async getPockets() {
-    await new Promise((r) => setTimeout(r, 100));
     return {
       success: true,
       message: 'Savings pockets retrieved',
@@ -90,9 +113,12 @@ export const savingsService = {
 
 export const analyticsService = {
   async getMonthlySummary() {
-    await new Promise((r) => setTimeout(r, 120));
-    const txs = financialStore.getTransactions(100);
+    const res = await apiRequest('/analytics/dashboard');
+    if (res && res.success && res.data) {
+      return res;
+    }
 
+    const txs = financialStore.getTransactions(100);
     let calculatedSpent = 0;
     let calculatedIncome = 0;
 
@@ -137,9 +163,13 @@ export const analyticsService = {
 
 export const exchangeRateService = {
   async getLiveRates() {
+    const res = await apiRequest('/exchange/rates');
+    if (res && res.success && res.data) {
+      return res;
+    }
     return {
       success: true,
-      message: 'Live market rates retrieved',
+      message: 'Simulated rates retrieved',
       data: [
         { pair: 'EUR/USD', rate: 1.0824, change: '+0.15%', isUp: true },
         { pair: 'GBP/USD', rate: 1.2915, change: '+0.32%', isUp: true },

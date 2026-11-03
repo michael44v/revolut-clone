@@ -1,17 +1,32 @@
+import { apiRequest } from './api';
 import { financialStore } from './financialStore';
 
 /**
  * Transaction Service
- * Realistic simulated double-entry ledger history adhering to procedural PHP JSON API contract.
+ * Connects to PHP backend:
+ * GET  /api/v1/transactions
+ * GET  /api/v1/transactions/details?id=...
+ * POST /api/v1/transfers/send
+ * POST /api/v1/transfers/request
  */
 
 export const transactionService = {
-  async getTransactions(limit = 20) {
-    await new Promise((r) => setTimeout(r, 120));
+  async getTransactions(limit = 20, category = '', search = '') {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit);
+    if (category) params.append('category', category);
+    if (search) params.append('search', search);
+
+    const res = await apiRequest(`/transactions?${params.toString()}`);
+    if (res && res.success && res.data) {
+      return res;
+    }
+
+    // Local fallback
     const txs = financialStore.getTransactions(limit);
     return {
       success: true,
-      message: 'Transactions retrieved successfully',
+      message: 'Transactions retrieved',
       data: {
         transactions: txs,
         totalCount: txs.length,
@@ -20,10 +35,14 @@ export const transactionService = {
   },
 
   async getTransactionDetails(id) {
-    await new Promise((r) => setTimeout(r, 100));
+    const res = await apiRequest(`/transactions/details?id=${encodeURIComponent(id)}`);
+    if (res && res.success && res.data) {
+      return res;
+    }
+
     const tx = financialStore.getTransaction(id);
     if (!tx) {
-      return { success: false, message: 'Transaction not found', errors: ['Not found'] };
+      return { success: false, message: 'Transaction not found', data: null };
     }
     return {
       success: true,
@@ -33,7 +52,17 @@ export const transactionService = {
   },
 
   async createSimulatedTransfer({ recipientName, amount, currency, reference }) {
-    await new Promise((r) => setTimeout(r, 300));
+    const res = await apiRequest('/transfers/send', {
+      method: 'POST',
+      body: { recipientName, amount, currency, reference },
+    });
+
+    if (res && res.success && res.data) {
+      await financialStore.sendTransfer({ recipientName, amount, currency, reference });
+      return res;
+    }
+
+    // Fallback
     try {
       const result = await financialStore.sendTransfer({
         recipientName,
@@ -50,13 +79,23 @@ export const transactionService = {
       return {
         success: false,
         message: err.message || 'Transfer failed',
-        errors: [err.message],
+        data: null,
       };
     }
   },
 
   async createSimulatedRequest({ fromName, amount, currency, note }) {
-    await new Promise((r) => setTimeout(r, 250));
+    const res = await apiRequest('/transfers/request', {
+      method: 'POST',
+      body: { fromName, amount, currency, note },
+    });
+
+    if (res && res.success && res.data) {
+      await financialStore.requestPayment({ fromName, amount, currency, note });
+      return res;
+    }
+
+    // Fallback
     try {
       const result = await financialStore.requestPayment({
         fromName,
@@ -73,7 +112,7 @@ export const transactionService = {
       return {
         success: false,
         message: err.message || 'Payment request failed',
-        errors: [err.message],
+        data: null,
       };
     }
   },

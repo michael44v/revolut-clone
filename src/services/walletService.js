@@ -1,28 +1,28 @@
+import { apiRequest } from './api';
 import { financialStore } from './financialStore';
 
 /**
  * Wallet service
- * Provides multi-currency wallet management and live balances.
- * Demo balances specified by user:
- * - USD: $5,250.00
- * - GBP: £1,850.00
- * - EUR: €2,400.00
- * - NGN: ₦3,500,000.00
- * Starter balances for newly registered accounts:
- * - USD: $100.00
- * - GBP: £50.00
- * - EUR: €50.00
- * - NGN: ₦50,000.00
+ * Connects to PHP backend:
+ * GET  /api/v1/wallets
+ * POST /api/v1/wallets (deposit funds)
+ * GET  /api/v1/wallets/details?currency=...
+ * POST /api/v1/exchange/convert
  */
 
 export const walletService = {
   async getWallets() {
-    await new Promise((r) => setTimeout(r, 120));
+    const res = await apiRequest('/wallets');
+    if (res && res.success && res.data) {
+      return res;
+    }
+
+    // Fallback to local financialStore
     const wallets = financialStore.getWallets();
     const totalUsdEquivalent = financialStore.calculateTotalUsd();
     return {
       success: true,
-      message: 'Wallets retrieved successfully',
+      message: 'Wallets retrieved',
       data: {
         wallets: [...wallets],
         totalUsdEquivalent,
@@ -31,7 +31,11 @@ export const walletService = {
   },
 
   async getWalletDetails(currency) {
-    await new Promise((r) => setTimeout(r, 100));
+    const res = await apiRequest(`/wallets/details?currency=${encodeURIComponent(currency)}`);
+    if (res && res.success && res.data) {
+      return res;
+    }
+
     const wallet = financialStore.getWallet(currency);
     return {
       success: true,
@@ -41,19 +45,23 @@ export const walletService = {
   },
 
   async addFunds(currency, amount) {
-    await new Promise((r) => setTimeout(r, 250));
+    const res = await apiRequest('/wallets', {
+      method: 'POST',
+      body: { currency, amount },
+    });
+
+    if (res && res.success && res.data) {
+      // Also sync local store
+      await financialStore.addFunds(currency, amount);
+      return res;
+    }
+
+    // Offline fallback
     try {
       const result = await financialStore.addFunds(currency, amount);
-      if (!result) {
-        return {
-          success: false,
-          message: 'Wallet not found',
-          errors: ['Invalid currency specified'],
-        };
-      }
       return {
         success: true,
-        message: `Added ${result.wallet.symbol}${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2 })} successfully`,
+        message: `Added ${result.wallet.symbol}${Number(amount).toFixed(2)} successfully`,
         data: result.wallet,
       };
     } catch (err) {
@@ -66,13 +74,23 @@ export const walletService = {
   },
 
   async convertCurrency(fromCurrency, toCurrency, amount) {
-    await new Promise((r) => setTimeout(r, 300));
+    const res = await apiRequest('/exchange/convert', {
+      method: 'POST',
+      body: { fromCurrency, toCurrency, amount },
+    });
+
+    if (res && res.success && res.data) {
+      await financialStore.exchangeCurrency({ fromCurrency, toCurrency, amount });
+      return res;
+    }
+
+    // Offline fallback
     try {
-      const res = await financialStore.exchangeCurrency({ fromCurrency, toCurrency, amount });
+      const result = await financialStore.exchangeCurrency({ fromCurrency, toCurrency, amount });
       return {
         success: true,
-        message: `Converted ${amount} ${fromCurrency} to ${res.convertedAmount.toFixed(2)} ${toCurrency}`,
-        data: res,
+        message: `Converted ${amount} ${fromCurrency} to ${result.convertedAmount.toFixed(2)} ${toCurrency}`,
+        data: result,
       };
     } catch (err) {
       return {
