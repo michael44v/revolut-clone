@@ -26,6 +26,7 @@ $routeMap = [
     'auth/me' => 'api/v1/auth/me.php',
     'users/profile' => 'api/v1/users/profile.php',
     'users/update_profile' => 'api/v1/users/update_profile.php',
+    'users/update_avatar' => 'api/v1/users/update_avatar.php',
     'wallets' => 'api/v1/wallets/index.php',
     'wallets/details' => 'api/v1/wallets/details.php',
     'wallets/transactions' => 'api/v1/wallets/transactions.php',

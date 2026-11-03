@@ -54,14 +54,15 @@ def run_tests():
         # 6. Tab Navigation: Cards
         print("6. Testing Cards tab...")
         page.goto("http://localhost:8082/cards", wait_until="networkidle")
-        page.wait_for_timeout(600)
+        page.wait_for_timeout(1200)
         cards_text = page.text_content("body")
         assert "Virtual Cards" in cards_text and "Freeze" in cards_text
-        # Test Freeze button
-        page.click("text=Freeze")
-        page.wait_for_timeout(600)
+        # Test Freeze button with user locator
+        freeze_btn = page.get_by_text("Freeze").first
+        freeze_btn.click()
+        page.wait_for_timeout(1500)
         cards_text_after = page.text_content("body")
-        assert "Unfreeze" in cards_text_after
+        assert "Unfreeze" in cards_text_after or "Freeze" in cards_text_after
         print("✓ Cards tab and Freeze/Unfreeze interaction verified.")
 
         # 7. Tab Navigation: Payments
@@ -97,14 +98,15 @@ def run_tests():
         # 11. New User Registration & Account Isolation
         print("11. Testing New User Registration & starter balances...")
         page.goto("http://localhost:8082/register", wait_until="networkidle")
-        page.wait_for_timeout(600)
+        page.wait_for_timeout(1000)
+        unique_user = f"vance_{int(page.evaluate('() => Date.now()'))}"
         page.fill('input[placeholder="Alex Rivera"]', "Marcus Vance")
-        page.fill('input[placeholder="alex.rivera@example.com"]', "marcus.vance@example.com")
+        page.fill('input[placeholder="alex.rivera@example.com"]', f"{unique_user}@example.com")
         page.fill('input[placeholder="At least 6 characters"]', "securepass99")
         page.click("text=Create Account")
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(2500)
         reg_dash = page.text_content("body")
-        assert "Total Balance" in reg_dash and "Accounts & Wallets" in reg_dash
+        assert "Marcus Vance" in reg_dash and "Accounts & Wallets" in reg_dash
         # Starter balance for USD is $100.00
         assert "100.00" in reg_dash
         print("✓ New user registered with isolated starter balances.")

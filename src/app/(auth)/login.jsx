@@ -12,14 +12,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Mail, Lock, Sparkles, AlertCircle } from 'lucide-react-native';
+import { ArrowLeft, Mail, Lock, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { login, loginAsDemo } = useAuth();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,14 +42,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleDemoQuickFill = async () => {
-    setLoading(true);
-    const res = await loginAsDemo();
-    setLoading(false);
-    if (res.success) {
-      router.replace('/(tabs)');
-    }
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -134,21 +126,6 @@ export default function LoginScreen() {
               ) : (
                 <Text style={styles.submitButtonText}>Sign In</Text>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.demoFastBtn,
-                { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-              ]}
-              onPress={handleDemoQuickFill}
-              disabled={loading}
-              activeOpacity={0.8}
-            >
-              <Sparkles size={16} color={colors.primary} style={{ marginRight: 6 }} />
-              <Text style={[styles.demoFastBtnText, { color: colors.primary }]}>
-                Instant Demo Access
-              </Text>
             </TouchableOpacity>
           </View>
 

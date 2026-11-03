@@ -161,7 +161,7 @@ export default function WelcomeScreen() {
                   styles.secondaryButton,
                   { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
-                onPress={() => router.push('/(auth)/register')}
+                onPress={() => router.push('/(auth)/onboarding')}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Sign up</Text>

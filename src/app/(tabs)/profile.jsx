@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Shield,
   Moon,
@@ -13,9 +14,11 @@ import {
   Sparkles,
   ScanFace,
   Bell,
+  Camera,
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/authService';
 import { biometricsService } from '../../utils/biometrics';
 import { storage } from '../../utils/storage';
 
@@ -24,11 +27,12 @@ const BIOMETRICS_PREF_KEY = 'app_biometrics_enabled';
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors, isDark, themeMode, setThemeMode } = useTheme();
-  const { user, isDemoUser, logout } = useAuth();
+  const { user, isDemoUser, logout, updateUser } = useAuth();
 
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
   const [biometricType, setBiometricType] = useState('Face ID');
   const [pushNotifsEnabled, setPushNotifsEnabled] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     async function checkBio() {
@@ -41,6 +45,49 @@ export default function ProfileScreen() {
     }
     checkBio();
   }, []);
+
+  const handlePickAvatar = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Needed', 'Please allow photo gallery access to upload a profile picture.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setUploadingAvatar(true);
+
+        const imagePayload = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+
+        // Persist to MySQL database via PHP API
+        const res = await authService.updateAvatar(imagePayload);
+        setUploadingAvatar(false);
+
+        if (res.success) {
+          const newAvatar = res.data?.avatarUrl || asset.uri;
+          updateUser({ avatar: newAvatar });
+          Alert.alert('Success', 'Profile picture updated successfully in the database.');
+        } else {
+          // Even if offline, update client preview
+          updateUser({ avatar: asset.uri });
+        }
+      }
+    } catch (_e) {
+      setUploadingAvatar(false);
+      Alert.alert('Error', 'Could not update profile picture.');
+    }
+  };
 
   const toggleBiometrics = async (val) => {
     if (val) {
@@ -80,15 +127,30 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Card */}
+        {/* User Card with Interactive Avatar Changer */}
         <View style={[styles.userCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {user?.avatar ? (
-            <Image source={{ uri: user.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarInitial}>{initial}</Text>
+          <TouchableOpacity
+            style={styles.avatarTouchable}
+            onPress={handlePickAvatar}
+            activeOpacity={0.8}
+            disabled={uploadingAvatar}
+          >
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
+                <Text style={styles.avatarInitial}>{initial}</Text>
+              </View>
+            )}
+            <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Camera size={14} color="#FFFFFF" />
+              )}
             </View>
-          )}
+          </TouchableOpacity>
+
           <View style={styles.userInfo}>
             <View style={styles.userTitleRow}>
               <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
@@ -100,6 +162,11 @@ export default function ProfileScreen() {
               )}
             </View>
             <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{displayEmail}</Text>
+            <TouchableOpacity onPress={handlePickAvatar} style={{ marginTop: 2 }}>
+              <Text style={[styles.changePhotoText, { color: colors.primary }]}>
+                Tap avatar to change photo
+              </Text>
+            </TouchableOpacity>
             <View style={[styles.planBadge, { backgroundColor: colors.chip }]}>
               <Text style={[styles.planBadgeText, { color: colors.text }]}>
                 {user?.tier || (isDemoUser ? 'Metal Premium' : 'Standard')} Plan
@@ -120,7 +187,7 @@ export default function ProfileScreen() {
                 <View>
                   <Text style={[styles.menuTitle, { color: colors.text }]}>{biometricType}</Text>
                   <Text style={[styles.menuSub, { color: colors.textSecondary }]}>
-                    Unlock simulated account
+                    Unlock account securely
                   </Text>
                 </View>
               </View>
@@ -219,8 +286,8 @@ export default function ProfileScreen() {
               style={styles.menuItem}
               onPress={() =>
                 Alert.alert(
-                  'About Simulation',
-                  'Revolut-inspired Fintech Simulator.\nArchitecture: Pure React Native JSX with decoupled services.\nBackend: Procedural PHP / MySQLi ready.'
+                  'About FinTech System',
+                  'Revolut-inspired Fintech App.\nBackend: Procedural PHP 8.2+ with MySQLi prepared statements.\nDatabase: Double-entry ledger with integer minor units.'
                 )
               }
               activeOpacity={0.7}
@@ -229,7 +296,7 @@ export default function ProfileScreen() {
                 <View style={[styles.iconBox, { backgroundColor: colors.cardSecondary }]}>
                   <HelpCircle size={18} color={colors.primary} />
                 </View>
-                <Text style={[styles.menuTitle, { color: colors.text }]}>About & PHP Architecture</Text>
+                <Text style={[styles.menuTitle, { color: colors.text }]}>Database & Architecture</Text>
               </View>
               <ChevronRight size={18} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -276,15 +343,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 16,
   },
+  avatarTouchable: {
+    position: 'relative',
+  },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -292,6 +362,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '700',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   userInfo: {
     flex: 1,
@@ -320,6 +402,10 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 13,
+  },
+  changePhotoText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   planBadge: {
     alignSelf: 'flex-start',
