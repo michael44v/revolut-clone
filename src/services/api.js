@@ -34,7 +34,17 @@ export async function apiRequest(endpoint, { method = 'GET', body, token, header
     requestHeaders.Authorization = `Bearer ${authToken}`;
   }
 
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // If remote server requires .php suffixes (e.g. Apache without rewrite), support automatic suffix
+  if (API_BASE_URL.includes('.php') || API_BASE_URL.includes('bluevult.com')) {
+    if (!cleanEndpoint.endsWith('.php') && !cleanEndpoint.includes('?')) {
+      cleanEndpoint += '.php';
+    } else if (cleanEndpoint.includes('?') && !cleanEndpoint.includes('.php?')) {
+      cleanEndpoint = cleanEndpoint.replace('?', '.php?');
+    }
+  }
+
   const fullUrl = `${API_BASE_URL}${cleanEndpoint}`;
 
   try {

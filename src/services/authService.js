@@ -106,4 +106,24 @@ export const authService = {
   async getCurrentUser() {
     return await apiRequest('/auth/me');
   },
+
+  async updateAvatar(imageBase64OrUrl) {
+    const isBase64 = imageBase64OrUrl.startsWith('data:') || imageBase64OrUrl.length > 500;
+    const body = isBase64 ? { imageBase64: imageBase64OrUrl } : { avatarUrl: imageBase64OrUrl };
+
+    const res = await apiRequest('/users/update_avatar', {
+      method: 'POST',
+      body,
+    });
+
+    if (res && res.success && res.data) {
+      return res;
+    }
+
+    return {
+      success: false,
+      message: res?.message || 'Failed to update avatar',
+      data: null,
+    };
+  },
 };

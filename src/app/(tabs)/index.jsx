@@ -25,11 +25,13 @@ import RecentTransactions from '../../components/RecentTransactions';
 import SpendingAnalyticsCard from '../../components/SpendingAnalyticsCard';
 import ActionModal from '../../components/ActionModal';
 import NotificationModal from '../../components/NotificationModal';
+import { DashboardSkeleton } from '../../components/SkeletonLoader';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
 
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [wallets, setWallets] = useState([]);
   const [totalUsd, setTotalUsd] = useState(0);
@@ -43,8 +45,12 @@ export default function HomeScreen() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isSilent = false) => {
+    if (!isSilent && wallets.length === 0) {
+      setIsLoading(true);
+    }
     try {
+      // Live fetch directly from backend MySQL database
       const [walletRes, txRes, analyticsRes, notifRes] = await Promise.all([
         walletService.getWallets(),
         transactionService.getTransactions(6),
@@ -80,12 +86,13 @@ export default function HomeScreen() {
         setUnreadCount(notifRes.data.unreadCount);
       }
     } catch (e) {
-      console.warn('Error loading dashboard data:', e);
+      console.warn('Error loading dashboard data from backend:', e);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [wallets.length]);
 
   useEffect(() => {
-    // Initial fetch
     let isMounted = true;
     (async () => {
       if (isMounted) {
@@ -93,22 +100,29 @@ export default function HomeScreen() {
       }
     })();
 
-    // Subscribe to real-time financial store updates
+    // Real-time notification and data polling interval (every 8s)
+    const interval = setInterval(() => {
+      if (isMounted) {
+        loadData(true);
+      }
+    }, 8000);
+
     const unsubscribe = financialStore.subscribe(() => {
       if (isMounted) {
-        loadData();
+        loadData(true);
       }
     });
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
       unsubscribe();
     };
   }, [loadData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData(false);
     setRefreshing(false);
   };
 
@@ -118,7 +132,7 @@ export default function HomeScreen() {
 
   const handleAddMoney = async (currency, amount) => {
     await walletService.addFunds(currency, amount);
-    await loadData();
+    await loadData(true);
   };
 
   const handleTransfer = async ({ recipientName, amount, currency, reference }) => {
@@ -128,7 +142,7 @@ export default function HomeScreen() {
       currency,
       reference,
     });
-    await loadData();
+    await loadData(true);
     return res;
   };
 
@@ -139,13 +153,13 @@ export default function HomeScreen() {
       currency,
       note,
     });
-    await loadData();
+    await loadData(true);
     return res;
   };
 
   const handleExchange = async ({ fromCurrency, toCurrency, amount }) => {
     const res = await walletService.convertCurrency(fromCurrency, toCurrency, amount);
-    await loadData();
+    await loadData(true);
     return res;
   };
 
@@ -177,38 +191,44 @@ export default function HomeScreen() {
           />
         }
       >
-        <BalanceCard
-          totalUsd={totalUsd}
-          isBalanceVisible={isBalanceVisible}
-          onToggleVisibility={() => setIsBalanceVisible(!isBalanceVisible)}
-          activeCurrency={selectedWallet?.currency || 'USD'}
-          onCurrencySelectPress={() => {
-            setActiveModalAction('exchange');
-          }}
-        />
+        {isLoading && !refreshing ? (
+          <DashboardSkeleton />
+        ) : (
+          <>
+            <BalanceCard
+              totalUsd={totalUsd}
+              isBalanceVisible={isBalanceVisible}
+              onToggleVisibility={() => setIsBalanceVisible(!isBalanceVisible)}
+              activeCurrency={selectedWallet?.currency || 'USD'}
+              onCurrencySelectPress={() => {
+                setActiveModalAction('exchange');
+              }}
+            />
 
-        <QuickActions onActionPress={handleActionPress} />
+            <QuickActions onActionPress={handleActionPress} />
 
-        <WalletCarousel
-          wallets={wallets}
-          selectedWalletId={selectedWallet?.id}
-          onSelectWallet={(w) => setSelectedWallet(w)}
-          onAddCurrency={() => {
-            Alert.alert(
-              'Add Currency Wallet',
-              'Multi-currency accounts support USD, GBP, EUR and NGN with immediate double-entry verification.',
-              [{ text: 'Got it' }]
-            );
-          }}
-        />
+            <WalletCarousel
+              wallets={wallets}
+              selectedWalletId={selectedWallet?.id}
+              onSelectWallet={(w) => setSelectedWallet(w)}
+              onAddCurrency={() => {
+                Alert.alert(
+                  'Add Currency Wallet',
+                  'Multi-currency accounts support USD, GBP, EUR and NGN with immediate double-entry verification.',
+                  [{ text: 'Got it' }]
+                );
+              }}
+            />
 
-        <SpendingAnalyticsCard analytics={analytics} />
+            <SpendingAnalyticsCard analytics={analytics} />
 
-        <RecentTransactions
-          transactions={transactions}
-          onSelectTransaction={(tx) => setSelectedTx(tx)}
-          onSeeAll={() => router.push('/(tabs)/payments')}
-        />
+            <RecentTransactions
+              transactions={transactions}
+              onSelectTransaction={(tx) => setSelectedTx(tx)}
+              onSeeAll={() => router.push('/(tabs)/payments')}
+            />
+          </>
+        )}
       </ScrollView>
 
       {/* Quick Action Modal (Add, Send, Request, Exchange) */}
