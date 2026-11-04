@@ -1,46 +1,56 @@
+
 import { apiRequest } from './api';
 import { financialStore } from './financialStore';
-
-/**
- * Wallet service
- * Connects to PHP backend:
- * GET  /api/v1/wallets
- * POST /api/v1/wallets (deposit funds)
- * GET  /api/v1/wallets/details?currency=...
- * POST /api/v1/exchange/convert
- */
 
 export const walletService = {
   async getWallets() {
     const res = await apiRequest('/wallets');
-    if (res && res.success && res.data) {
-      return res;
+
+    if (
+      res?.success &&
+      res?.data &&
+      Array.isArray(res.data.wallets)
+    ) {
+      return {
+        ...res,
+        data: {
+          ...res.data,
+          wallets: res.data.wallets,
+          totalUsdEquivalent:
+            Number(res.data.totalUsdEquivalent) || 0,
+        },
+      };
     }
 
-    // Fallback to local financialStore
+    // Local fallback
     const wallets = financialStore.getWallets();
-    const totalUsdEquivalent = financialStore.calculateTotalUsd();
+
     return {
       success: true,
-      message: 'Wallets retrieved',
+      message: 'Wallets retrieved from local store',
       data: {
-        wallets: [...wallets],
-        totalUsdEquivalent,
+        wallets: Array.isArray(wallets) ? [...wallets] : [],
+        totalUsdEquivalent:
+          Number(financialStore.calculateTotalUsd()) || 0,
       },
     };
   },
 
   async getWalletDetails(currency) {
-    const res = await apiRequest(`/wallets/details?currency=${encodeURIComponent(currency)}`);
-    if (res && res.success && res.data) {
+    const res = await apiRequest(
+      `/wallets/details?currency=${encodeURIComponent(currency)}`
+    );
+
+    if (res?.success && res?.data) {
       return res;
     }
 
     const wallet = financialStore.getWallet(currency);
+
     return {
-      success: true,
-      message: 'Wallet details retrieved',
-      data: wallet,
+      success: !!wallet,
+      message: wallet ? 'Wallet details retrieved' : 'Wallet not found',
+      data: wallet || null,
     };
   },
 
@@ -50,15 +60,14 @@ export const walletService = {
       body: { currency, amount },
     });
 
-    if (res && res.success && res.data) {
-      // Also sync local store
+    if (res?.success && res?.data) {
       await financialStore.addFunds(currency, amount);
       return res;
     }
 
-    // Offline fallback
     try {
       const result = await financialStore.addFunds(currency, amount);
+
       return {
         success: true,
         message: `Added ${result.wallet.symbol}${Number(amount).toFixed(2)} successfully`,
@@ -79,14 +88,22 @@ export const walletService = {
       body: { fromCurrency, toCurrency, amount },
     });
 
-    if (res && res.success && res.data) {
-      await financialStore.exchangeCurrency({ fromCurrency, toCurrency, amount });
+    if (res?.success && res?.data) {
+      await financialStore.exchangeCurrency({
+        fromCurrency,
+        toCurrency,
+        amount,
+      });
       return res;
     }
 
-    // Offline fallback
     try {
-      const result = await financialStore.exchangeCurrency({ fromCurrency, toCurrency, amount });
+      const result = await financialStore.exchangeCurrency({
+        fromCurrency,
+        toCurrency,
+        amount,
+      });
+
       return {
         success: true,
         message: `Converted ${amount} ${fromCurrency} to ${result.convertedAmount.toFixed(2)} ${toCurrency}`,

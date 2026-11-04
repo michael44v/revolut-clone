@@ -13,35 +13,60 @@ export default function CardsScreen() {
   const [showNumbers, setShowNumbers] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-    async function load() {
+  let isMounted = true;
+
+  async function load() {
+    try {
       const res = await cardService.getCards();
-      if (res.success && isMounted) {
-        setCards(res.data);
-      }
-    }
-    load();
 
-    const unsubscribe = financialStore.subscribe(() => {
+      if (!isMounted) return;
+
+      if (res?.success) {
+        const cardList = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.cards)
+            ? res.data.cards
+            : [];
+
+        setCards(cardList);
+      } else {
+        setCards([]);
+        console.warn('Failed to load cards:', res?.message);
+      }
+    } catch (error) {
+      console.error('Card loading error:', error);
+
       if (isMounted) {
-        load();
+        setCards([]);
       }
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, []);
-
-  const toggleFreeze = async (cardId) => {
-    const res = await cardService.toggleFreeze(cardId);
-    if (res.success) {
-      setCards((prev) =>
-        prev.map((c) => (c.id === cardId ? { ...c, isFrozen: !c.isFrozen } : c))
-      );
     }
+  }
+
+  load();
+
+  const unsubscribe = financialStore.subscribe(() => {
+    if (isMounted) load();
+  });
+
+  return () => {
+    isMounted = false;
+    unsubscribe?.();
   };
+}, []);
+
+const toggleFreeze = async (cardId) => {
+  const res = await cardService.toggleFreeze(cardId);
+
+  if (res?.success) {
+    setCards((prev) =>
+      (Array.isArray(prev) ? prev : []).map((c) =>
+        c.id === cardId
+          ? { ...c, isFrozen: !c.isFrozen }
+          : c
+      )
+    );
+  }
+};
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -58,7 +83,7 @@ export default function CardsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {cards.map((c) => (
+      {(Array.isArray(cards) ? cards : []).map((c) => (
           <View key={c.id} style={styles.cardSection}>
             <LinearGradient
               colors={c.isFrozen ? ['#3F4452', '#1E212A'] : c.colorGradient}

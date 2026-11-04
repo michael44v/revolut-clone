@@ -12,37 +12,56 @@ import { financialStore } from './financialStore';
  * GET  /api/v1/exchange/rates
  */
 
+
 export const cardService = {
   async getCards() {
-    const res = await apiRequest('/cards');
-    if (res && res.success && res.data) {
-      return res;
-    }
-    return {
-      success: true,
-      message: 'Cards retrieved',
-      data: financialStore.getCards(),
-    };
-  },
+  const res = await apiRequest('/cards');
+
+  if (!res?.success) {
+    throw new Error(res?.message || 'Failed to fetch cards');
+  }
+
+  const cardList = Array.isArray(res.data)
+    ? res.data
+    : res.data?.cards;
+
+  if (!Array.isArray(cardList)) {
+    throw new Error('Invalid cards response from backend');
+  }
+
+  return {
+    ...res,
+    data: cardList,
+  };
+},
 
   async toggleFreeze(cardId) {
-    const res = await apiRequest('/cards/update_status', {
-      method: 'POST',
-      body: { cardId },
-    });
-    if (res && res.success && res.data) {
-      await financialStore.toggleCardFreeze(cardId);
-      return res;
+    try {
+      const res = await apiRequest('/cards/update_status', {
+        method: 'POST',
+        body: { cardId },
+      });
+
+      if (res?.success) {
+        await financialStore.toggleCardFreeze(cardId);
+        return res;
+      }
+    } catch (error) {
+      console.error('toggleFreeze API error:', error);
     }
 
     const card = await financialStore.toggleCardFreeze(cardId);
+
     return {
       success: true,
-      message: card?.isFrozen ? 'Card frozen successfully' : 'Card unfrozen successfully',
+      message: card?.isFrozen
+        ? 'Card frozen successfully'
+        : 'Card unfrozen successfully',
       data: card,
     };
   },
 };
+
 
 export const notificationService = {
   async getNotifications() {

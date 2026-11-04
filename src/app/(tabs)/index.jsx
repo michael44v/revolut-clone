@@ -58,24 +58,32 @@ export default function HomeScreen() {
         notificationService.getNotifications(),
       ]);
 
-      if (walletRes.success) {
-        setWallets(walletRes.data.wallets);
-        setTotalUsd(walletRes.data.totalUsdEquivalent);
-        setSelectedWallet((prev) => {
-          if (!prev && walletRes.data.wallets.length > 0) {
-            return walletRes.data.wallets[0];
-          }
-          if (prev) {
-            const updated = walletRes.data.wallets.find((w) => w.id === prev.id);
-            return updated || walletRes.data.wallets[0];
-          }
-          return null;
-        });
-      }
+if (walletRes.success) {
+  const walletList = Array.isArray(walletRes.data?.wallets)
+    ? walletRes.data.wallets
+    : [];
 
-      if (txRes.success) {
-        setTransactions(txRes.data.transactions);
-      }
+  setWallets(walletList);
+  setTotalUsd(Number(walletRes.data?.totalUsdEquivalent) || 0);
+
+  setSelectedWallet((prev) => {
+    if (!prev) return walletList[0] || null;
+
+    return (
+      walletList.find((w) => w.id === prev.id) ||
+      walletList[0] ||
+      null
+    );
+  });
+}
+
+if (txRes.success) {
+  setTransactions(
+    Array.isArray(txRes.data?.transactions)
+      ? txRes.data.transactions
+      : []
+  );
+}
 
       if (analyticsRes.success) {
         setAnalytics(analyticsRes.data);

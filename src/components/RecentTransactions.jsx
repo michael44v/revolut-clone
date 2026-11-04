@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import {
@@ -20,82 +21,126 @@ const ICON_MAP = {
   Repeat,
 };
 
-export default function RecentTransactions({ transactions, onSelectTransaction, onSeeAll }) {
+export default function RecentTransactions({
+  transactions = [],
+  onSelectTransaction,
+  onSeeAll,
+}) {
   const { colors } = useTheme();
+
+  // Ensure transactions is always a valid array
+  const safeTransactions = Array.isArray(transactions)
+    ? transactions
+    : [];
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Transactions</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Recent Transactions
+        </Text>
+
         <TouchableOpacity onPress={onSeeAll} style={styles.seeAllBtn}>
-          <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
+          <Text style={[styles.seeAllText, { color: colors.primary }]}>
+            See all
+          </Text>
           <ChevronRight size={14} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.listCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {transactions.map((tx, idx) => {
-          const IconComponent = ICON_MAP[tx.iconName] || ArrowUpRight;
-          const isIncome = tx.amount > 0;
-          const isLast = idx === transactions.length - 1;
+      <View
+        style={[
+          styles.listCard,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        {safeTransactions.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No recent transactions yet.
+            </Text>
+          </View>
+        ) : (
+          safeTransactions.map((tx, idx) => {
+            if (!tx || typeof tx !== 'object') return null;
 
-          return (
-            <TouchableOpacity
-              key={tx.id}
-              style={[
-                styles.itemRow,
-                !isLast && { borderBottomColor: colors.borderSubtle, borderBottomWidth: 1 },
-              ]}
-              onPress={() => onSelectTransaction(tx)}
-              activeOpacity={0.7}
-            >
-              <View
+            const IconComponent = ICON_MAP[tx.iconName] || ArrowUpRight;
+
+            const amount = Number(tx.amount) || 0;
+            const isIncome = amount > 0;
+            const isLast = idx === safeTransactions.length - 1;
+
+            return (
+              <TouchableOpacity
+                key={tx.id ?? `transaction-${idx}`}
                 style={[
-                  styles.iconBox,
-                  {
-                    backgroundColor: isIncome ? colors.successLight : colors.cardSecondary,
+                  styles.itemRow,
+                  !isLast && {
+                    borderBottomColor: colors.borderSubtle,
+                    borderBottomWidth: 1,
                   },
                 ]}
+                onPress={() => onSelectTransaction?.(tx)}
+                activeOpacity={0.7}
               >
-                <IconComponent
-                  size={18}
-                  color={isIncome ? colors.success : colors.icon}
-                  strokeWidth={2}
-                />
-              </View>
-
-              <View style={styles.txInfo}>
-                <Text style={[styles.txTitle, { color: colors.text }]} numberOfLines={1}>
-                  {tx.title}
-                </Text>
-                <Text style={[styles.txDate, { color: colors.textSecondary }]}>
-                  {tx.date} • {tx.category}
-                </Text>
-              </View>
-
-              <View style={styles.txAmountCol}>
-                <Text
+                <View
                   style={[
-                    styles.txAmount,
+                    styles.iconBox,
                     {
-                      color: isIncome ? colors.success : colors.text,
+                      backgroundColor: isIncome
+                        ? colors.successLight
+                        : colors.cardSecondary,
                     },
                   ]}
                 >
-                  {isIncome ? '+' : ''}
-                  {tx.symbol}
-                  {Math.abs(tx.amount).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </Text>
-                <Text style={[styles.txStatus, { color: colors.textMuted }]}>
-                  {tx.status}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+                  <IconComponent
+                    size={18}
+                    color={isIncome ? colors.success : colors.icon}
+                    strokeWidth={2}
+                  />
+                </View>
+
+                <View style={styles.txInfo}>
+                  <Text
+                    style={[styles.txTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {tx.title || 'Transaction'}
+                  </Text>
+
+                  <Text style={[styles.txDate, { color: colors.textSecondary }]}>
+                    {tx.date || 'Date unavailable'} • {tx.category || 'General'}
+                  </Text>
+                </View>
+
+                <View style={styles.txAmountCol}>
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      {
+                        color: isIncome ? colors.success : colors.text,
+                      },
+                    ]}
+                  >
+                    {isIncome ? '+' : '-'}
+                    {tx.symbol || '$'}
+                    {Math.abs(amount).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </Text>
+
+                  <Text style={[styles.txStatus, { color: colors.textMuted }]}>
+                    {tx.status || 'Pending'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
     </View>
   );
@@ -135,6 +180,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
+  },
+  emptyContainer: {
+    paddingVertical: 28,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
   },
   itemRow: {
     flexDirection: 'row',
